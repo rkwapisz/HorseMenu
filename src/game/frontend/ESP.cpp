@@ -56,6 +56,14 @@ namespace YimMenu
 	{
 		auto ped = plyr.GetPed();
 
+		// Out-of-LOS enemies will be a little more transparent
+		if (!ENTITY::HAS_ENTITY_CLEAR_LOS_TO_ENTITY(Self::PlayerPed, ped.GetHandle(), 17))
+		{
+			color.Value.w *= 0.25f;
+		}
+
+		drawList->AddCircleFilled(boneToScreen(ped.GetBonePosition(headBone)), 5, color, 12);
+
 		drawList->AddLine(boneToScreen(ped.GetBonePosition(headBone)), boneToScreen(ped.GetBonePosition(neckBone)), color);
 
 		drawList->AddLine(boneToScreen(ped.GetBonePosition(neckBone)), boneToScreen(ped.GetBonePosition(leftElbowBone)), color);
