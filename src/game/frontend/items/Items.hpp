@@ -6,12 +6,11 @@ namespace YimMenu
 {
 	class BoolCommand;
 	class PlayerCommand;
+	class ListCommand;
+	class IntCommand;
+	class FloatCommand;
+	class Vector3Command;
 	class Command;
-
-	inline ImVec2 GetListBoxDimensions()
-	{
-		return {300, 250};
-	}
 
 	class Button : public UIItem
 	{
@@ -29,31 +28,93 @@ namespace YimMenu
 	class CommandItem : public UIItem
 	{
 	public:
-		explicit CommandItem(joaat_t id);
+		explicit CommandItem(joaat_t id, std::optional<std::string> label_override = std::nullopt);
 		void Draw() override;
 
 	private:
 		Command* m_Command;
+		std::optional<std::string> m_LabelOverride;
 	};
 
 	class PlayerCommandItem : public UIItem
 	{
 	public:
-		explicit PlayerCommandItem(joaat_t id);
+		explicit PlayerCommandItem(joaat_t id, std::optional<std::string> label_override = std::nullopt);
 		void Draw() override;
 
 	private:
 		PlayerCommand* m_Command;
+		std::optional<std::string> m_LabelOverride;
 	};
 
 	class BoolCommandItem : public UIItem
 	{
 	public:
-		explicit BoolCommandItem(joaat_t id);
+		explicit BoolCommandItem(joaat_t id, std::optional<std::string> label_override = std::nullopt);
 		void Draw() override;
 
 	private:
 		BoolCommand* m_Command;
+		std::optional<std::string> m_LabelOverride;
+	};
+
+	class IntCommandItem : public UIItem
+	{
+	public:
+		explicit IntCommandItem(joaat_t id, std::optional<std::string> label_override = std::nullopt);
+		void Draw() override;
+
+	private:
+		IntCommand* m_Command;
+		std::optional<std::string> m_LabelOverride;
+	};
+
+	class FloatCommandItem : public UIItem
+	{
+	public:
+		explicit FloatCommandItem(joaat_t id, std::optional<std::string> label_override = std::nullopt);
+		void Draw() override;
+
+	private:
+		FloatCommand* m_Command;
+		std::optional<std::string> m_LabelOverride;
+	};
+
+	class Vector3CommandItem : public UIItem
+	{
+	public:
+		explicit Vector3CommandItem(joaat_t id, std::optional<std::string> label_override = std::nullopt);
+		void Draw() override;
+
+	private:
+		Vector3Command* m_Command;
+		std::optional<std::string> m_LabelOverride;
+		std::string m_CurrentCategory{};
+		std::string m_CurrentFilter{};
+	};
+
+	class ListCommandItem : public UIItem
+	{
+	public:
+		explicit ListCommandItem(joaat_t id, std::optional<std::string> label_override = std::nullopt);
+		void Draw() override;
+
+	private:
+		ListCommand* m_Command;
+		std::optional<std::string> m_LabelOverride;
+		std::optional<int> m_ItemWidth = std::nullopt;
+		std::optional<std::string> m_SelectedItem = std::nullopt;
+	};
+
+	class ConditionalItem : public UIItem
+	{
+	public:
+		explicit ConditionalItem(joaat_t bool_cmd_id, std::shared_ptr<UIItem> to_draw);
+		void Draw() override;
+
+	private:
+		BoolCommand* m_Condition;
+		std::shared_ptr<UIItem> m_Item;
 	};
 
 	class ImGuiItem : public UIItem
@@ -80,7 +141,7 @@ namespace YimMenu
 	class Group : public UIItem
 	{
 	public:
-		explicit Group(const std::string& name, ImVec2 size = {0, 0});
+		explicit Group(const std::string& name, int items_per_row = 7);
 		void Draw() override;
 		
 		void AddItem(std::shared_ptr<UIItem>&& item)
@@ -90,30 +151,8 @@ namespace YimMenu
 
 	private:
 		std::string m_Name;
-		ImVec2 m_Size;
+		int m_ItemsPerRow;
 		std::vector<std::shared_ptr<UIItem>> m_Items;
-	};
-
-	class Column : public UIItem
-	{
-	public:
-		explicit Column(const int columns) :
-		    m_Columns(columns)
-		{
-		}
-
-		void AddItem(std::shared_ptr<UIItem>&& item)
-		{
-			m_Items.push_back(std::move(item));
-		}
-
-		void Draw();
-		void AddNextColumn();
-		void AddColumnOffset(const int column, const int offset);
-
-	private:
-		std::vector<std::shared_ptr<UIItem>> m_Items;
-		int m_Columns;
 	};
 
 	class InputTextWithHint : public UIItem

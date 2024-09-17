@@ -1,15 +1,16 @@
 #include "common.hpp"
-#include "core/byte_patch_manager/byte_patch_manager.hpp"
 #include "core/commands/HotkeySystem.hpp"
 #include "core/filemgr/FileMgr.hpp"
 #include "core/frontend/Notifications.hpp"
 #include "core/hooking/Hooking.hpp"
 #include "core/memory/ModuleMgr.hpp"
+#include "game/backend/PlayerDatabase.hpp"
 #include "core/renderer/Renderer.hpp"
 #include "core/settings/Settings.hpp"
 #include "game/backend/FiberPool.hpp"
 #include "game/backend/ScriptMgr.hpp"
-#include "game/bigfeatures/CustomTeleport.hpp"
+#include "game/backend/NativeHooks.hpp"
+#include "game/backend/SavedLocations.hpp"
 #include "game/features/Features.hpp"
 #include "game/frontend/GUI.hpp"
 #include "game/pointers/Pointers.hpp"
@@ -20,13 +21,15 @@ namespace YimMenu
 	DWORD Main(void*)
 	{
 		const auto documents = std::filesystem::path(std::getenv("appdata")) / "HorseMenu";
-		FileMgr::Init(documents); // TODO
+		FileMgr::Init(documents);
 
 		LogHelper::Init("HorseMenu", FileMgr::GetProjectFile("./cout.log"));
 
 		g_HotkeySystem.RegisterCommands();
-		CustomTeleport::FetchSavedLocations();
+		SavedLocations::FetchSavedLocations();
 		Settings::Initialize(FileMgr::GetProjectFile("./settings.json"));
+
+		auto PlayerDatabaseInstance = std::make_unique<PlayerDatabase>();
 
 		if (!ModuleMgr.LoadModules())
 			goto unload;
@@ -35,15 +38,13 @@ namespace YimMenu
 		if (!Renderer::Init())
 			goto unload;
 
-		Byte_Patch_Manager::Init();
-
 		Hooking::Init();
 
 		ScriptMgr::Init();
-		LOG(INFO) << "ScriptMgr Initialized";
+		LOG(INFO) << "ScriptMgr initialized";
 
 		FiberPool::Init(5);
-		LOG(INFO) << "FiberPool Initialized";
+		LOG(INFO) << "FiberPool initialized";
 
 		GUI::Init();
 
@@ -52,6 +53,10 @@ namespace YimMenu
 		ScriptMgr::AddScript(std::make_unique<Script>(&ContextMenuTick));
 
 		Notifications::Show("HorseMenu", "Loaded succesfully", NotificationType::Success);
+
+#ifndef NDEBUG
+		LOG(WARNING) << "Debug Build. Switch to RelWithDebInfo or Release build configurations to have a more stable experience.";
+#endif
 
 		while (g_Running)
 		{
@@ -67,22 +72,27 @@ namespace YimMenu
 
 		LOG(INFO) << "Unloading";
 
+		NativeHooks::Destroy();
+		LOG(INFO) << "NativeHooks uninitialized";
+
 		ScriptMgr::Destroy();
-		LOG(INFO) << "ScriptMgr Uninitialized";
+		LOG(INFO) << "ScriptMgr uninitialized";
 
 		FiberPool::Destroy();
-		LOG(INFO) << "FiberPool Uninitialized";
+		LOG(INFO) << "FiberPool uninitialized";
+
+		PlayerDatabaseInstance.reset();
 
 	unload:
 		Hooking::Destroy();
+		LOG(INFO) << "Hooking uninitialized";
 		Renderer::Destroy();
-		Pointers.Restore();
+		LOG(INFO) << "Renderer uninitialized";
 
+		LOG(INFO) << "Goodbye!";
 		LogHelper::Destroy();
 
-		CloseHandle(g_MainThread);
 		FreeLibraryAndExitThread(g_DllInstance, EXIT_SUCCESS);
-
 		return EXIT_SUCCESS;
 	}
 }

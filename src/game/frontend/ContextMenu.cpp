@@ -7,11 +7,15 @@
 #include "game/backend/Players.hpp"
 #include "game/pointers/Pointers.hpp"
 #include "game/rdr/Enums.hpp"
-
+#include "game/rdr/Pools.hpp"
 
 namespace YimMenu::Features
 {
 	BoolCommand _ContextMenu("ctxmenu", "Context Menu", "Enables a context menu that allows you to perform actions on nearby entities and players");
+	BoolCommand _ContextPlayers("ctxmenuplayers", "Show Players", "Should the context menu show players?");
+	BoolCommand _ContextPeds("ctxmenupeds", "Show Peds", "Should the context menu show peds?");
+	BoolCommand _ContextVehicles("ctxmenuvehicles", "Show Vehicles", "Should the context menu show vehicles?");
+	BoolCommand _ContextObjects("ctxmenuobjects", "Show Objects", "Should the context menu show objects?");
 }
 
 namespace YimMenu
@@ -21,7 +25,8 @@ namespace YimMenu
 		return std::abs(screenPos.x - 0.5) + std::abs(screenPos.y - 0.5);
 	}
 
-	inline int GetEntityHandleClosestToMiddleOfScreen(bool includePlayers, bool includePeds = false, bool includeVehicles = false, bool includeObjects = false)
+	// TODO: Refactor this - LOS check
+	inline int GetEntityHandleClosestToMiddleOfScreen(bool includePlayers, bool includePeds, bool includeVehicles, bool includeObjects)
 	{
 		int closestHandle{};
 		float distance = 1;
@@ -31,7 +36,7 @@ namespace YimMenu
 			rage::fvector2 screenPos{};
 			float worldCoords_[3] = {worldCoords.x, worldCoords.y, worldCoords.z};
 			Pointers.WorldToScreen(worldCoords_, &screenPos.x, &screenPos.y);
-			if (CumulativeDistanceToMiddleOfScreen(screenPos) < distance && handle != Self::PlayerPed)
+			if (CumulativeDistanceToMiddleOfScreen(screenPos) < distance && handle != Self::GetPed().GetHandle())
 			{
 				closestHandle = handle;
 				distance      = CumulativeDistanceToMiddleOfScreen(screenPos);
@@ -47,6 +52,33 @@ namespace YimMenu
 			}
 		}
 
+		if (includePeds)
+		{
+			for (Ped ped : Pools::GetPeds())
+			{
+				if (ped.IsValid() || ped.GetPointer<void*>())
+					updateClosestEntity(ped.GetHandle());
+			}
+		}
+
+		if (includeVehicles)
+		{
+			for (Entity obj : Pools::GetObjects())
+			{
+				if (obj.IsValid() || obj.GetPointer<void*>())
+					updateClosestEntity(obj.GetHandle());
+			}
+		}
+
+		if (includeObjects)
+		{
+			for (Entity veh : Pools::GetVehicles())
+			{
+				if (veh.IsValid() || veh.GetPointer<void*>())
+					updateClosestEntity(veh.GetHandle());
+			}
+		}
+
 		return closestHandle;
 	}
 
@@ -54,13 +86,17 @@ namespace YimMenu
 	{
 		if (Features::_ContextMenu.GetState())
 		{
-			PAD::DISABLE_CONTROL_ACTION(0, (Hash)eNativeInputs::INPUT_SWITCH_SHOULDER, true);
-			if (PAD::IS_DISABLED_CONTROL_JUST_PRESSED(0, (Hash)eNativeInputs::INPUT_SWITCH_SHOULDER))
+			PAD::DISABLE_CONTROL_ACTION(0, (Hash)NativeInputs::INPUT_SWITCH_SHOULDER, true);
+			if (PAD::IS_DISABLED_CONTROL_JUST_PRESSED(0, (Hash)NativeInputs::INPUT_SWITCH_SHOULDER))
 				m_Enabled = !m_Enabled;
 
 			if (m_Enabled)
 			{
-				auto handle = GetEntityHandleClosestToMiddleOfScreen(true);
+				auto handle = GetEntityHandleClosestToMiddleOfScreen(
+					Features::_ContextPlayers.GetState(),
+				    Features::_ContextPeds.GetState(),
+				    Features::_ContextVehicles.GetState(),
+				    Features::_ContextObjects.GetState());
 
 				static auto switchToMenu = [&](ContextOperationsMenu menu) -> void {
 					if (m_CurrentOperationsMenu != menu)
@@ -69,7 +105,7 @@ namespace YimMenu
 					}
 				};
 
-				if (handle && ENTITY::DOES_ENTITY_EXIST(handle))
+				if (handle && ENTITY::DOES_ENTITY_EXIST(handle) && ENTITY::HAS_ENTITY_CLEAR_LOS_TO_ENTITY(Self::GetPed().GetHandle(), handle, 17))
 				{
 					m_Entity = handle;
 
@@ -82,11 +118,11 @@ namespace YimMenu
 					}
 					else if (m_Entity.IsVehicle())
 					{
-						switchToMenu(ContextMenuDefault); // TODO: Create Vehicle menu
+						switchToMenu(ContextMenuVehicles); // TODO: Create Vehicle menu
 					}
 					else if (m_Entity.IsObject())
 					{
-						switchToMenu(ContextMenuDefault); // TODO: Create Object menu
+						switchToMenu(ContextMenuObjects); // TODO: Create Object menu
 					}
 
 					if (m_CurrentOperationsMenu.m_SelectedOperation.m_Name.empty())
@@ -98,17 +134,17 @@ namespace YimMenu
 					m_ScreenPos.x *= Pointers.ScreenResX;
 					m_ScreenPos.y *= Pointers.ScreenResY;
 
-					PAD::DISABLE_CONTROL_ACTION(0, (int)eNativeInputs::INPUT_NEXT_WEAPON, true);
-					PAD::DISABLE_CONTROL_ACTION(0, (int)eNativeInputs::INPUT_PREV_WEAPON, true);
-					PAD::DISABLE_CONTROL_ACTION(0, (int)eNativeInputs::INPUT_ATTACK, true);
+					PAD::DISABLE_CONTROL_ACTION(0, (int)NativeInputs::INPUT_NEXT_WEAPON, true);
+					PAD::DISABLE_CONTROL_ACTION(0, (int)NativeInputs::INPUT_PREV_WEAPON, true);
+					PAD::DISABLE_CONTROL_ACTION(0, (int)NativeInputs::INPUT_ATTACK, true);
 
-					if (PAD::IS_DISABLED_CONTROL_JUST_PRESSED(0, (int)eNativeInputs::INPUT_PREV_WEAPON))
+					if (PAD::IS_DISABLED_CONTROL_JUST_PRESSED(0, (int)NativeInputs::INPUT_PREV_WEAPON))
 						m_CurrentOperationsMenu.SelectPrevious();
 
-					if (PAD::IS_DISABLED_CONTROL_JUST_PRESSED(0, (int)eNativeInputs::INPUT_NEXT_WEAPON))
+					if (PAD::IS_DISABLED_CONTROL_JUST_PRESSED(0, (int)NativeInputs::INPUT_NEXT_WEAPON))
 						m_CurrentOperationsMenu.SelectNext();
 
-					if (PAD::IS_DISABLED_CONTROL_JUST_PRESSED(0, (int)eNativeInputs::INPUT_ATTACK))
+					if (PAD::IS_DISABLED_CONTROL_JUST_PRESSED(0, (int)NativeInputs::INPUT_ATTACK))
 						FiberPool::Push([=] {
 							m_CurrentOperationsMenu.m_SelectedOperation.m_Operation(m_Entity);
 						});

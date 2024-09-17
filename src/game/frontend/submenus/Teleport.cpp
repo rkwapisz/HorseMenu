@@ -1,66 +1,47 @@
 #include "Teleport.hpp"
-#include "game/features/Features.hpp"
-#include "game/frontend/items/Items.hpp"
-#include "game/bigfeatures/CustomTeleport.hpp"
-#include "util/Math.hpp"
-#include "util/Teleport.hpp"
+
 #include "core/frontend/Notifications.hpp"
 #include "game/backend/FiberPool.hpp"
+#include "game/backend/SavedLocations.hpp"
+#include "game/backend/Self.hpp"
+#include "game/frontend/items/Items.hpp"
+#include "util/Math.hpp"
+#include "util/Teleport.hpp"
+
 
 namespace YimMenu::Submenus
 {
-	Telelocation GetLocationPlayerIsClosestTo()
+	static float GetDistanceFromLocation(const SavedLocation& t)
 	{
-		if (!Pointers.GetLocalPed)
-			return {};
-
-		float distance = 500;
-		Telelocation closestLocation{};
-		//saved_locations_filtered_list can be used to get a joint list of all categories when the filter is empty.
-		for (auto& loc : CustomTeleport::SavedLocationsFilteredList())
-		{
-			float newDistance = Math::DistanceBetweenVectors(Self::Pos, {loc.x, loc.y, loc.z});
-
-			if (newDistance < distance)
-				closestLocation = loc, distance = newDistance;
-		}
-
-		return closestLocation;
+		return rage::fvector3(t.x, t.y, t.z).GetDistance(Self::GetPed().GetPosition());
 	}
-
-	float GetDistanceToTelelocation(Telelocation t)
-	{
-		return Math::DistanceBetweenVectors(Vector3(t.x, t.y, t.z), Self::Pos);
-	}
-
 
 	void RenderCustomTeleport()
 	{
 		ImGui::BeginGroup();
-		static std::string NewLocationName{};
+		static std::string newLocationName{};
 		static std::string category = "Default";
-		static Telelocation deleteTelelocation;
-		static std::string filter{};
+		static SavedLocation locationToDelete;
 
-		if (!std::string(deleteTelelocation.name).empty())
+		if (!std::string(locationToDelete.name).empty())
 			ImGui::OpenPopup("##deletelocation");
 
 		if (ImGui::BeginPopupModal("##deletelocation", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove))
 		{
-			ImGui::Text("Are you sure you want to delete %s?", deleteTelelocation.name);
+			ImGui::Text("Are you sure you want to delete %s?", locationToDelete.name);
 
 			ImGui::Spacing();
 
 			if (ImGui::Button("Yes"))
 			{
-				CustomTeleport::DeleteSavedLocation(category, deleteTelelocation.name);
-				deleteTelelocation.name = "";
+				SavedLocations::DeleteSavedLocation(category, locationToDelete.name);
+				locationToDelete.name = "";
 				ImGui::CloseCurrentPopup();
 			}
 			ImGui::SameLine();
 			if (ImGui::Button("No"))
 			{
-				deleteTelelocation.name = "";
+				locationToDelete.name = "";
 				ImGui::CloseCurrentPopup();
 			}
 
@@ -70,38 +51,39 @@ namespace YimMenu::Submenus
 		ImGui::PushItemWidth(300);
 		InputTextWithHint("Category", "Category", &category).Draw();
 
-		InputTextWithHint("Location name", "New location", &NewLocationName).Draw();
+		ImGui::PushItemWidth(200);
+		InputTextWithHint("Location name", "New location", &newLocationName).Draw();
 		ImGui::PopItemWidth();
 
-		if (ImGui::Button("Save current location")) //Button widget still crashes
+		if (ImGui::Button("Save current location")) // Button widget still crashes
 		{
 			FiberPool::Push([=] {
-				if (NewLocationName.empty())
+				if (newLocationName.empty())
 				{
 					Notifications::Show("Custom Teleport", "Please enter a valid name.", NotificationType::Warning);
 				}
-				else if (CustomTeleport::GetSavedLocationByName(NewLocationName))
+				else if (SavedLocations::GetSavedLocationByName(newLocationName))
 				{
-					Notifications::Show("Custom Teleport", std::format("Location with the name {} already exists", NewLocationName));
+					Notifications::Show("Custom Teleport", std::format("Location with the name {} already exists", newLocationName));
 				}
 				else
 				{
-					Telelocation teleportLocation;
-					Entity teleportEntity = Self::PlayerPed;
-					if (Self::Veh != 0)
-						teleportEntity = Self::Veh;
-					else if (Self::IsOnMount)
-						teleportEntity = Self::Mount;
+					SavedLocation teleportLocation;
+					Entity teleportEntity = Self::GetPed();
+					if (auto vehicle = Self::GetVehicle())
+						teleportEntity = vehicle;
+					else if (auto mount = Self::GetMount())
+						teleportEntity = mount;
 
 					auto coords            = teleportEntity.GetPosition();
-					teleportLocation.name  = NewLocationName;
+					teleportLocation.name  = newLocationName;
 					teleportLocation.x     = coords.x;
 					teleportLocation.y     = coords.y;
 					teleportLocation.z     = coords.z;
 					teleportLocation.yaw   = ENTITY::GET_ENTITY_HEADING(teleportEntity.GetHandle());
 					teleportLocation.pitch = CAM::GET_GAMEPLAY_CAM_RELATIVE_PITCH();
 					teleportLocation.roll  = CAM::GET_GAMEPLAY_CAM_RELATIVE_HEADING();
-					CustomTeleport::SaveNewLocation(category, teleportLocation);
+					SavedLocations::SaveNewLocation(category, teleportLocation);
 				}
 			});
 		};
@@ -112,15 +94,22 @@ namespace YimMenu::Submenus
 		ImGui::Text("Double click to teleport\nShift click to delete");
 
 		ImGui::Spacing();
+
+		static std::string filter{};
 		InputTextWithHint("##filter", "Search", &filter).Draw();
 
 		ImGui::BeginGroup();
 		ImGui::Text("Categories");
 		if (ImGui::BeginListBox("##categories", {200, -1}))
 		{
-			for (auto& l : CustomTeleport::GetAllSavedLocations() | std::ranges::views::keys)
+			for (auto& l : SavedLocations::GetAllSavedLocations() | std::ranges::views::keys)
 			{
 				if (ImGui::Selectable(l.data(), l == category))
+				{
+					category = l;
+				}
+
+				if (category.empty())
 				{
 					category = l;
 				}
@@ -131,24 +120,24 @@ namespace YimMenu::Submenus
 		ImGui::SameLine();
 		ImGui::BeginGroup();
 		ImGui::Text("Locations");
-		if (ImGui::BeginListBox("##Telelocations", {200, -1})) //Need automatic dimensions instead of hard coded
+		if (ImGui::BeginListBox("##saved_locs", {200, -1})) // Need automatic dimensions instead of hard coded
 		{
-			if (CustomTeleport::GetAllSavedLocations().find(category) != CustomTeleport::GetAllSavedLocations().end())
+			if (SavedLocations::GetAllSavedLocations().find(category) != SavedLocations::GetAllSavedLocations().end())
 			{
-				std::vector<Telelocation> current_list{};
+				std::vector<SavedLocation> current_list{};
 
 				if (!filter.empty())
-					current_list = CustomTeleport::SavedLocationsFilteredList(filter);
+					current_list = SavedLocations::SavedLocationsFilteredList(filter);
 				else
-					current_list = CustomTeleport::GetAllSavedLocations().at(category);
+					current_list = SavedLocations::GetAllSavedLocations().at(category);
 
 				for (const auto& l : current_list)
 				{
-					if (ImGui::Selectable(l.name.data(), l.name == GetLocationPlayerIsClosestTo().name, ImGuiSelectableFlags_AllowDoubleClick))
+					if (ImGui::Selectable(l.name.data(), false, ImGuiSelectableFlags_AllowDoubleClick))
 					{
 						if (GetAsyncKeyState(VK_SHIFT) & 0x8000)
 						{
-							deleteTelelocation = l;
+							locationToDelete = l;
 						}
 						else
 						{
@@ -156,17 +145,18 @@ namespace YimMenu::Submenus
 							{
 								FiberPool::Push([l] {
 									rage::fvector3 l_ = {l.x, l.y, l.z};
-									YimMenu::Teleport::TeleportEntity(Self::PlayerPed,l_, false);
+									YimMenu::Teleport::TeleportEntity(Self::GetPed().GetHandle(), l_, false);
 								});
 							}
 						}
 					}
+
 					if (ImGui::IsItemHovered())
 					{
 						ImGui::BeginTooltip();
 						if (l.name.length() > 27)
 							ImGui::Text(l.name.data());
-						ImGui::Text("Distance: %f", GetDistanceToTelelocation(l));
+						ImGui::Text("Distance: %f", GetDistanceFromLocation(l));
 						ImGui::EndTooltip();
 					}
 				}
@@ -183,15 +173,18 @@ namespace YimMenu::Submenus
 	Teleport::Teleport() :
 	    Submenu::Submenu("Teleport")
 	{
-		auto main = std::make_shared<Category>("Main");
-		auto columns = std::make_shared<Column>(2);
-		auto miscGroup = std::make_shared<Group>("Misc", GetListBoxDimensions());
+		auto main      = std::make_shared<Category>("Main");
+		auto miscGroup = std::make_shared<Group>("Misc");
 
+		miscGroup->AddItem(std::make_shared<BoolCommandItem>("autotp"_J));
 		miscGroup->AddItem(std::make_shared<CommandItem>("tptowaypoint"_J));
 		miscGroup->AddItem(std::make_shared<CommandItem>("tptomount"_J));
+		miscGroup->AddItem(std::make_shared<CommandItem>("tptotraintrack"_J));
+		miscGroup->AddItem(std::make_shared<CommandItem>("tptocamp"_J));
+		miscGroup->AddItem(std::make_shared<CommandItem>("tptomoonshineshack"_J));
+		miscGroup->AddItem(std::make_shared<CommandItem>("tptonazar"_J));
 
-		columns->AddItem(miscGroup);
-		main->AddItem(columns);
+		main->AddItem(miscGroup);
 
 		auto customteleport = std::make_shared<Category>("Saved");
 		customteleport->AddItem(std::make_shared<ImGuiItem>([] {

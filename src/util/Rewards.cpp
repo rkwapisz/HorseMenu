@@ -1,129 +1,182 @@
 #include "Rewards.hpp"
+#include "game/pointers/Pointers.hpp"
+#include "game/rdr/ScriptFunction.hpp"
+#include "game/rdr/Scripts.hpp"
+#include <event/CEventGroup.hpp>
+#include <event/CEventInventoryItemPickedUp.hpp>
 
 namespace YimMenu::Rewards
 {
-	void SpawnRequestedRewards(std::vector<eRewardType> rewards)
+	void GiveReward(const RewardInfo& info)
+	{
+		CEventInventoryItemPickedUp event;
+		Pointers.InventoryEventConstructor(&event, info.reward_hash, info.model_hash, false, false, nullptr);
+		(*Pointers.EventGroupNetwork)->AddEvent(&event, false);
+	};
+
+	void GiveScriptReward(const RewardInfo& info, bool loottable)
+	{
+		if (!Scripts::RequestScript("interactive_campfire"_J))
+			return;
+
+		if (loottable)
+			ScriptFunctions::GiveLootTableAward.StaticCall(info.reward_hash, 0);
+		else
+			ScriptFunctions::GiveItemDatabaseAward.StaticCall(info.reward_hash, false, 255, 0, false);
+	}
+
+	void GiveRequestedRewards(std::vector<eRewardType> rewards)
 	{
 		for (auto& reward : rewards)
 		{
 			switch (reward)
 			{
-			case eRewardType::GOLD_REWARDS:
-				for (const auto& goldreward : GoldRewards)
-				{
-					SpawnRequestedRewards_Helper(goldreward.model);
-				}
-				break;
+			//case eRewardType::GOLD_REWARDS:
+			//	for (const auto& goldreward : GoldRewards)
+			//	{
+			//		SpawnRequestedRewards_Helper(goldreward);
+			//	}
+			//	break;
 			case eRewardType::HEIRLOOMS:
 				for (const auto& heirloom : Heirlooms)
 				{
-					SpawnRequestedRewards_Helper(heirloom.model);
+					GiveReward(heirloom);
 				}
 				break;
 			case eRewardType::COINS:
 				for (const auto& coin : Coins)
 				{
-					SpawnRequestedRewards_Helper(coin.model);
+					GiveReward(coin);
 				}
 				break;
 			case eRewardType::ALCBOTTLES:
 				for (const auto& alc : AlcBottles)
 				{
-					SpawnRequestedRewards_Helper(alc.model);
+					GiveReward(alc);
 				}
 				break;
 
 			case eRewardType::ARROWHEADS:
 				for (const auto& arrowhead : Arrowheads)
 				{
-					SpawnRequestedRewards_Helper(arrowhead.model);
+					GiveReward(arrowhead);
 				}
 				break;
 			case eRewardType::BRACELETS:
 				for (const auto& bracelet : Bracelets)
 				{
-					SpawnRequestedRewards_Helper(bracelet.model);
+					GiveReward(bracelet);
 				}
 				break;
 			case eRewardType::EARRINGS:
 				for (const auto& earring : Earrings)
 				{
-					SpawnRequestedRewards_Helper(earring.model);
+					GiveReward(earring);
 				}
 				break;
 			case eRewardType::NECKLACES:
 				for (const auto& necklace : Necklaces)
 				{
-					SpawnRequestedRewards_Helper(necklace.model);
+					GiveReward(necklace);
 				}
 				break;
 			case eRewardType::RINGS:
 				for (const auto& ring : Rings)
 				{
-					SpawnRequestedRewards_Helper(ring.model);
+					GiveReward(ring);
 				}
 				break;
 			case eRewardType::TAROTCARDS_CUPS:
 				for (const auto& card : TarotCards_Cups)
 				{
-					SpawnRequestedRewards_Helper(card.model);
+					GiveReward(card);
 				}
 				break;
 			case eRewardType::TAROTCARDS_PENTACLES:
 				for (const auto& card : TarotCards_Pentacles)
 				{
-					SpawnRequestedRewards_Helper(card.model);
+					GiveReward(card);
 				}
 				break;
 			case eRewardType::TAROTCARDS_SWORDS:
 				for (const auto& card : TarotCards_Swords)
 				{
-					SpawnRequestedRewards_Helper(card.model);
+					GiveReward(card);
 				}
 				break;
 			case eRewardType::TAROTCARDS_WANDS:
 				for (const auto& card : TarotCards_Wands)
 				{
-					SpawnRequestedRewards_Helper(card.model);
+					GiveReward(card);
+				}
+				break;
+			case eRewardType::FOSSILS:
+				for (const auto& fossil : Fossils)
+				{
+					GiveScriptReward(fossil);
+				}
+				break;
+			case eRewardType::EGGS:
+				for (const auto& egg : Eggs)
+				{
+					GiveScriptReward(egg);
+				}
+				break;
+			case eRewardType::TREASURE:
+				for (const auto& treasure : TreasureReward)
+				{
+					GiveScriptReward(treasure);
+				}
+				break;
+			case eRewardType::CAPITALE:
+				for (const auto& capitale : CapitaleReward)
+				{
+					GiveScriptReward(capitale);
+				}
+				break;
+			case eRewardType::XP:
+				for (const auto& xp : RegularXP)
+				{
+					GiveScriptReward(xp, false);
+				}
+				break;
+			case eRewardType::MOONSHINERXP:
+				for (const auto& xp : MoonshinerXP)
+				{
+					GiveScriptReward(xp, false);
+				}
+				break;
+			case eRewardType::TRADERXP:
+				for (const auto& xp : TraderXP)
+				{
+					GiveScriptReward(xp, false);
+				}
+				break;
+			case eRewardType::COLLECTORXP:
+				for (const auto& xp : CollectorXP)
+				{
+					GiveScriptReward(xp, false);
+				}
+				break;
+			case eRewardType::NATURALISTXP:
+				for (const auto& xp : NaturalistXP)
+				{
+					GiveScriptReward(xp, false);
+				}
+				break;
+			case eRewardType::BOUNTYHUNTERXP:
+				for (const auto& xp : BountyHunterXP)
+				{
+					GiveScriptReward(xp, false);
+				}
+				break;
+			case eRewardType::TRADERGOODS:
+				for (const auto& good : TraderGoods)
+				{
+					GiveScriptReward(good, false);
 				}
 				break;
 			}
 		}
-	};
-
-	void SpawnRequestedRewards_Helper(std::string model_name)
-	{
-		FiberPool::Push([=] {
-			Hash hash = MISC::GET_HASH_KEY(model_name.c_str());
-			if (STREAMING::IS_MODEL_IN_CDIMAGE(hash) && STREAMING::IS_MODEL_VALID(hash))
-			{
-				if (!STREAMING::HAS_MODEL_LOADED(hash))
-				{
-					STREAMING::REQUEST_MODEL(hash, false);
-					ScriptMgr::Yield();
-				}
-				Vector3 coords = ENTITY::GET_ENTITY_COORDS(PLAYER::PLAYER_PED_ID(), true, false);
-				Object obj = OBJECT::CREATE_OBJECT(hash, coords.x, coords.y, coords.z, true, NETWORK::NETWORK_IS_HOST_OF_THIS_SCRIPT(), 1, 0, 1);
-				ScriptMgr::Yield();
-
-				ENTITY::SET_ENTITY_VISIBLE(obj, true);
-				ScriptMgr::Yield();
-
-				OBJECT::_MAKE_ITEM_CARRIABLE(obj);
-
-				NETWORK::NETWORK_REGISTER_ENTITY_AS_NETWORKED(obj);
-				if (NETWORK::NETWORK_DOES_NETWORK_ID_EXIST(NETWORK::OBJ_TO_NET(obj)))
-				{
-					OBJECT::PLACE_OBJECT_ON_GROUND_PROPERLY(obj, true);
-					ENTITY::SET_ENTITY_SHOULD_FREEZE_WAITING_ON_COLLISION(obj, true);
-					NETWORK::SET_NETWORK_ID_EXISTS_ON_ALL_MACHINES(NETWORK::OBJ_TO_NET(obj), true);
-					NETWORK::NETWORK_REQUEST_CONTROL_OF_ENTITY(obj);
-				}
-				ScriptMgr::Yield();
-
-				STREAMING::SET_MODEL_AS_NO_LONGER_NEEDED(hash);
-				ENTITY::SET_OBJECT_AS_NO_LONGER_NEEDED(&obj);
-			}
-		});
 	};
 };

@@ -30,6 +30,8 @@ namespace YimMenu
 		}
 
 		BaseHook::Add<Hooks::Script::RunScriptThreads>(new DetourHook("RunScriptThreads", Pointers.RunScriptThreads, Hooks::Script::RunScriptThreads));
+		BaseHook::Add<Hooks::Script::InitNativeTables>(new DetourHook("InitNativeTables", Pointers.InitNativeTables, Hooks::Script::InitNativeTables));
+		BaseHook::Add<Hooks::Script::ScriptVM>(new DetourHook("ScriptVM", Pointers.ScriptVM, Hooks::Script::ScriptVM));
 
 		BaseHook::Add<Hooks::Anticheat::SendMetric>(new DetourHook("SendMetric", Pointers.SendMetric, Hooks::Anticheat::SendMetric));
 		BaseHook::Add<Hooks::Anticheat::QueueDependency>(new DetourHook("QueueDependency", Pointers.QueueDependency, Hooks::Anticheat::QueueDependency));
@@ -42,19 +44,34 @@ namespace YimMenu
 		BaseHook::Add<Hooks::Protections::ResetSyncNodes>(new DetourHook("ResetSyncNodes", Pointers.ResetSyncNodes, Hooks::Protections::ResetSyncNodes));
 		BaseHook::Add<Hooks::Protections::HandleScriptedGameEvent>(new DetourHook("HandleScriptedGameEvent", Pointers.HandleScriptedGameEvent, Hooks::Protections::HandleScriptedGameEvent));
 		BaseHook::Add<Hooks::Protections::AddObjectToCreationQueue>(new DetourHook("AddObjectToCreationQueue", Pointers.AddObjectToCreationQueue, Hooks::Protections::AddObjectToCreationQueue));
+		BaseHook::Add<Hooks::Protections::ReceiveNetMessage>(new DetourHook("ReceiveNetMessage", Pointers.ReceiveNetMessage, Hooks::Protections::ReceiveNetMessage));
+		BaseHook::Add<Hooks::Protections::HandlePresenceEvent>(new DetourHook("HandlePresenceEvent", Pointers.HandlePresenceEvent, Hooks::Protections::HandlePresenceEvent));
+		BaseHook::Add<Hooks::Protections::PPostMessage>(new DetourHook("PostMessage", Pointers.PostPresenceMessage, Hooks::Protections::PPostMessage));
+		BaseHook::Add<Hooks::Protections::SerializeServerRPC>(new DetourHook("SerializeServerRPC", Pointers.SerializeServerRPC, Hooks::Protections::SerializeServerRPC));
+		BaseHook::Add<Hooks::Protections::ReceiveServerMessage>(new DetourHook("ReceiveServerMessage", Pointers.ReceiveServerMessage, Hooks::Protections::ReceiveServerMessage));
+		BaseHook::Add<Hooks::Protections::ReceiveArrayUpdate>(new DetourHook("ReceiveArrayUpdate", Pointers.ReceiveArrayUpdate, Hooks::Protections::ReceiveArrayUpdate));
+
+		BaseHook::Add<Hooks::Protections::CreatePoolItem>(new DetourHook("CreatePoolItem", Pointers.CreatePoolItem, Hooks::Protections::CreatePoolItem));
 
 		BaseHook::Add<Hooks::Voice::EnumerateAudioDevices>(new DetourHook("EnumerateAudioDevices", Pointers.EnumerateAudioDevices, Hooks::Voice::EnumerateAudioDevices));
 		BaseHook::Add<Hooks::Voice::DirectSoundCaptureCreate>(new DetourHook("DirectSoundCaptureCreate", Pointers.DirectSoundCaptureCreate, Hooks::Voice::DirectSoundCaptureCreate));
 
 		BaseHook::Add<Hooks::Misc::ThrowFatalError>(new DetourHook("ThrowFatalError", Pointers.ThrowFatalError, Hooks::Misc::ThrowFatalError));
+		BaseHook::Add<Hooks::Misc::IsAnimSceneInScope>(new DetourHook("IsAnimSceneInScope", Pointers.IsAnimSceneInScope, Hooks::Misc::IsAnimSceneInScope));
 
 		BaseHook::Add<Hooks::Info::NetworkRequest>(new DetourHook("NetworkReqeust", Pointers.NetworkRequest, Hooks::Info::NetworkRequest));
 
 		BaseHook::Add<Hooks::Info::PlayerHasJoined>(new DetourHook("PlayerHasJoined", Pointers.PlayerHasJoined, Hooks::Info::PlayerHasJoined));
 		BaseHook::Add<Hooks::Info::PlayerHasLeft>(new DetourHook("PlayerHasLeft", Pointers.PlayerHasLeft, Hooks::Info::PlayerHasLeft));
 
+		BaseHook::Add<Hooks::Info::HandleSessionEvent>(new DetourHook("HandleSessionEvent", Pointers.HandleSessionEvent, Hooks::Info::HandleSessionEvent));
+
 		BaseHook::Add<Hooks::Spoofing::WritePlayerHealthData>(new DetourHook("WritePlayerHealthData", Pointers.WritePlayerHealthData, Hooks::Spoofing::WritePlayerHealthData));
 		BaseHook::Add<Hooks::Spoofing::SendNetInfoToLobby>(new DetourHook("SendNetInfoToLobby", Pointers.SendNetInfoToLobby, Hooks::Spoofing::SendNetInfoToLobby));
+		BaseHook::Add<Hooks::Spoofing::WriteVPMData>(new DetourHook("WriteVehicleProximityMigrationData", Pointers.WriteVPMData, Hooks::Spoofing::WriteVPMData));
+		BaseHook::Add<Hooks::Spoofing::GetDiscriminator>(new DetourHook("GetDiscriminator", Pointers.GetDiscriminator, Hooks::Spoofing::GetDiscriminator));
+
+		BaseHook::Add<Hooks::Toxic::BroadcastNetArray>(new DetourHook("BroadcastNetArray", Pointers.BroadcastNetArray, Hooks::Toxic::BroadcastNetArray));
 	}
 
 	Hooking::~Hooking()

@@ -1,14 +1,12 @@
 include(FetchContent)
 
-FetchContent_Declare(
-    rdr_classes
-    GIT_REPOSITORY https://github.com/YimMenu/RDR-Classes.git
-    GIT_TAG        1d566f23329b756aa3ef57be7b53525d949af14a
-    GIT_PROGRESS TRUE
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
-)
 message(STATUS "RDR-Classes")
-if(NOT rdr_classes_POPULATED)
-    FetchContent_Populate(rdr_classes)
-endif()
+
+FetchContent_Declare(
+    RDR-Classes
+    GIT_REPOSITORY https://github.com/YimMenu/RDR-Classes.git
+    GIT_TAG        ec19493aedc48e3fe0860342484058e48204dda2
+    GIT_PROGRESS TRUE
+)
+FetchContent_MakeAvailable(RDR-Classes)
+set_property(TARGET RDR-Classes PROPERTY CXX_STANDARD 23)
