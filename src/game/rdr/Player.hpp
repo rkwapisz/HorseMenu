@@ -12,6 +12,7 @@ namespace rage
 {
 	class rlGamerInfo;
 	class rlGamerInfoBase;
+	class netPeerAddress;
 }
 
 namespace YimMenu
@@ -36,13 +37,16 @@ namespace YimMenu
 		}
 
 		// object
-		bool IsValid();
+		bool IsValid() const;
 		int GetId();
 		const char* GetName();
 		CNetGamePlayer* GetHandle();
 		rage::rlGamerInfo* GetGamerInfo();
+		rage::rlGamerInfoBase* GetConnectPeerAddress();
+		rage::netPeerAddress* GetAddress();
 		Ped GetPed();
 		bool IsHost();
+		bool IsFriend();
 		uint32_t GetMessageId();
 		uint64_t GetRID();
 		netAddress GetExternalAddress();
@@ -51,7 +55,7 @@ namespace YimMenu
 		uint16_t GetExternalPort();
 		uint16_t GetInternalPort();
 		uint16_t GetRelayPort();
-		uint32_t GetRelayState();
+		uint32_t GetConnectionType();
 		int GetRank();
 		int GetHonor();
 		Language GetLanguage();
@@ -59,7 +63,6 @@ namespace YimMenu
 		Region GetRegion();
 		float GetAverageLatency();
 		float GetAveragePacketLoss();
-		rage::rlGamerInfoBase* GetConnectPeerAddress();
 
 		// backend/data store (should be refactored?)
 		PlayerData& GetData();

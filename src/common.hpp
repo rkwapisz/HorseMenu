@@ -1,4 +1,5 @@
 #pragma once
+#define IMGUI_DEFINE_MATH_OPERATORS
 
 #include <AsyncLogger/Logger.hpp>
 #include <MinHook.h>
@@ -29,6 +30,12 @@ using namespace al;
 
 namespace YimMenu
 {
+	const inline auto SYNC = std::make_shared<al::LogStream>("SYNC");
+	const inline auto NET_EVENT = std::make_shared<al::LogStream>("NET_EVENT");
+	const inline auto NETWORK = std::make_shared<al::LogStream>("NETWORK");
+	const inline auto GAME = std::make_shared<al::LogStream>("GAME");
+	const inline auto MENU = std::make_shared<al::LogStream>("MENU");
+
 	using namespace std::chrono_literals;
 	using namespace std::string_literals;
 

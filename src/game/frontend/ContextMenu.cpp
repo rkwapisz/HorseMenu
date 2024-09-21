@@ -25,7 +25,6 @@ namespace YimMenu
 		return std::abs(screenPos.x - 0.5) + std::abs(screenPos.y - 0.5);
 	}
 
-	// TODO: Refactor this - LOS check
 	inline int GetEntityHandleClosestToMiddleOfScreen(bool includePlayers, bool includePeds, bool includeVehicles, bool includeObjects)
 	{
 		int closestHandle{};
@@ -63,19 +62,19 @@ namespace YimMenu
 
 		if (includeVehicles)
 		{
-			for (Entity obj : Pools::GetObjects())
+			for (Entity veh : Pools::GetVehicles())
 			{
-				if (obj.IsValid() || obj.GetPointer<void*>())
-					updateClosestEntity(obj.GetHandle());
+				if (veh.IsValid() || veh.GetPointer<void*>())
+					updateClosestEntity(veh.GetHandle());
 			}
 		}
 
 		if (includeObjects)
 		{
-			for (Entity veh : Pools::GetVehicles())
+			for (Entity obj : Pools::GetObjects())
 			{
-				if (veh.IsValid() || veh.GetPointer<void*>())
-					updateClosestEntity(veh.GetHandle());
+				if (obj.IsValid() || obj.GetPointer<void*>())
+					updateClosestEntity(obj.GetHandle());
 			}
 		}
 
@@ -92,8 +91,7 @@ namespace YimMenu
 
 			if (m_Enabled)
 			{
-				auto handle = GetEntityHandleClosestToMiddleOfScreen(
-					Features::_ContextPlayers.GetState(),
+				auto handle = GetEntityHandleClosestToMiddleOfScreen(Features::_ContextPlayers.GetState(),
 				    Features::_ContextPeds.GetState(),
 				    Features::_ContextVehicles.GetState(),
 				    Features::_ContextObjects.GetState());
@@ -118,11 +116,11 @@ namespace YimMenu
 					}
 					else if (m_Entity.IsVehicle())
 					{
-						switchToMenu(ContextMenuVehicles); // TODO: Create Vehicle menu
+						switchToMenu(ContextMenuVehicles); // TODO: Improve Vehicle menu
 					}
 					else if (m_Entity.IsObject())
 					{
-						switchToMenu(ContextMenuObjects); // TODO: Create Object menu
+						switchToMenu(ContextMenuObjects); // TODO: Improve Objects Menu
 					}
 
 					if (m_CurrentOperationsMenu.m_SelectedOperation.m_Name.empty())

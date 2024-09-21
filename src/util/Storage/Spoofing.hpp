@@ -1,15 +1,22 @@
 #pragma once
 #include "game/rdr/Player.hpp"
 
+#include <network/netPeerAddress.hpp>
 #include <string>
 #include <unordered_map>
-
+#include <network/rlGamerHandle.hpp>
 
 namespace YimMenu
 {
 	struct Spoofing
 	{
-		std::string spoofed_name;
+		// TODO: Move this stuff
+		bool spoofName;
+		std::string spoofedName = "HorseMenu";
+		bool spoofIP;
+		std::array<int, 4> spoofedIP = {127, 0, 0, 1};
+		bool spoofRID;
+		int64_t spoofedRID = 696969;
 
 		struct RemotePlayerTeleport
 		{

@@ -1,13 +1,16 @@
 #include "Entity.hpp"
 
 #include "Natives.hpp"
+#include "Network.hpp"
 #include "game/pointers/Pointers.hpp"
 #include "util/Joaat.hpp"
 
+#include <entity/CDynamicEntity.hpp>
 #include <entity/fwEntity.hpp>
 #include <network/CNetObjectMgr.hpp>
 #include <network/CNetworkPlayerMgr.hpp>
 #include <network/netObject.hpp>
+
 
 
 namespace YimMenu
@@ -93,11 +96,16 @@ namespace YimMenu
 		return ENTITY::GET_IS_ANIMAL(GetHandle());
 	}
 
+	int Entity::GetModel()
+	{
+		ENTITY_ASSERT_VALID();
+		return ENTITY::GET_ENTITY_MODEL(GetHandle());
+	}
+
 	rage::fvector3 Entity::GetPosition()
 	{
 		ENTITY_ASSERT_VALID();
-		auto pos = ENTITY::GET_ENTITY_COORDS(GetHandle(), false, true);
-		return rage::fvector3(pos.x, pos.y, pos.z);
+		return ENTITY::GET_ENTITY_COORDS(GetHandle(), false, true);
 	}
 
 	void Entity::SetPosition(rage::fvector3 position)
@@ -111,8 +119,7 @@ namespace YimMenu
 	rage::fvector3 Entity::GetRotation(int order)
 	{
 		ENTITY_ASSERT_VALID();
-		auto pos = ENTITY::GET_ENTITY_ROTATION(GetHandle(), order);
-		return rage::fvector3(pos.x, pos.y, pos.z);
+		return ENTITY::GET_ENTITY_ROTATION(GetHandle(), order);
 	}
 
 	void Entity::SetRotation(rage::fvector3 rotation, int order)
@@ -125,8 +132,7 @@ namespace YimMenu
 	rage::fvector3 Entity::GetVelocity()
 	{
 		ENTITY_ASSERT_VALID();
-		auto pos = ENTITY::GET_ENTITY_VELOCITY(GetHandle(), 0);
-		return rage::fvector3(pos.x, pos.y, pos.z);
+		return ENTITY::GET_ENTITY_VELOCITY(GetHandle(), 0);
 	}
 
 	void Entity::SetVelocity(rage::fvector3 vel)
@@ -159,15 +165,8 @@ namespace YimMenu
 
 		if (IsNetworked())
 		{
-			auto net = GetPointer<rage::fwEntity*>()->m_NetObject;
-			if (net)
-			{
-				ForceControl();
-				for (int i = 0; i < 32; i++)
-					if (Pointers.NetworkPlayerMgr->m_PlayerList[i])
-						(*Pointers.NetworkObjectMgr)->PackCloneRemove(net, Pointers.NetworkPlayerMgr->m_PlayerList[i], true);
-				(*Pointers.NetworkObjectMgr)->UnregisterNetworkObject(net, 0, true, true);
-			}
+			auto net = GetPointer<CDynamicEntity*>()->m_NetObject;
+			Network::ForceRemoveNetworkEntity(net->m_ObjectId, net->m_OwnershipToken);
 		}
 		else
 		{
@@ -180,10 +179,15 @@ namespace YimMenu
 
 	bool Entity::IsNetworked()
 	{
-		if (!IsValid())
-			return false;
+		return GetNetworkObject() != nullptr;
+	}
 
-		return GetPointer<rage::fwEntity*>()->m_NetObject != nullptr;
+	rage::netObject* Entity::GetNetworkObject()
+	{
+		if (!IsValid())
+			return nullptr;
+
+		return GetPointer<CDynamicEntity*>()->m_NetObject;
 	}
 
 	bool Entity::HasControl()
@@ -191,7 +195,7 @@ namespace YimMenu
 		if (!IsNetworked())
 			return true;
 
-		return !GetPointer<rage::fwEntity*>()->m_NetObject->m_IsRemotelyControlled;
+		return !GetNetworkObject()->m_IsRemotelyControlled;
 	}
 
 	std::uint16_t Entity::GetNetworkObjectId()
@@ -200,7 +204,7 @@ namespace YimMenu
 		if (!IsNetworked())
 			return 0;
 
-		return GetPointer<rage::fwEntity*>()->m_NetObject->m_ObjectId;
+		return GetNetworkObject()->m_ObjectId;
 	}
 
 	void Entity::ForceControl()
@@ -210,7 +214,30 @@ namespace YimMenu
 		if (!IsNetworked() || HasControl())
 			return;
 
-		(*Pointers.NetworkObjectMgr)->ChangeOwner(GetPointer<rage::fwEntity*>()->m_NetObject, Pointers.NetworkPlayerMgr->m_LocalPlayer, 5, true);
+		(*Pointers.NetworkObjectMgr)->ChangeOwner(GetNetworkObject(), Pointers.NetworkPlayerMgr->m_LocalPlayer, 5, true);
+	}
+
+	void Entity::ForceSync(Player* for_player)
+	{
+		ENTITY_ASSERT_VALID();
+		ENTITY_ASSERT_CONTROL();
+		ENTITY_ASSERT_SCRIPT_CONTEXT();
+
+		if (!IsNetworked())
+			return;
+
+		char data[0x400];
+		auto net = GetNetworkObject();
+		for (int i = 0; i < 32; i++)
+		{
+			if (Pointers.NetworkPlayerMgr->m_PlayerList[i]
+			    && Pointers.NetworkPlayerMgr->m_PlayerList[i] != Pointers.NetworkPlayerMgr->m_LocalPlayer
+			    && (!for_player || !for_player->IsValid() || for_player->GetId() == i))
+			{
+				rage::datBitBuffer buffer(data, sizeof(data));
+				(*Pointers.NetworkObjectMgr)->PackCloneCreate(net, Pointers.NetworkPlayerMgr->m_PlayerList[i], &buffer);
+			}
+		}
 	}
 
 	bool Entity::IsInvincible()
@@ -243,8 +270,8 @@ namespace YimMenu
 		}
 		else
 		{
-			auto ptr             = GetPointer<rage::fwEntity*>();
-			auto local           = reinterpret_cast<rage::fwEntity*>(Pointers.GetLocalPed());
+			auto ptr             = GetPointer<CDynamicEntity*>();
+			auto local           = reinterpret_cast<CDynamicEntity*>(Pointers.GetLocalPed());
 			auto pos             = GetPosition();
 			std::uint32_t weapon = "WEAPON_EXPLOSION"_J;
 
@@ -285,6 +312,12 @@ namespace YimMenu
 		ENTITY_ASSERT_VALID();
 		ENTITY_ASSERT_CONTROL();
 		ENTITY::SET_ENTITY_VISIBLE(GetHandle(), status);
+	}
+
+	bool Entity::HasInterior()
+	{
+		ENTITY_ASSERT_VALID();
+		return INTERIOR::GET_INTERIOR_FROM_ENTITY(GetHandle()) != 0;
 	}
 
 	// TODO: find a better way to compare entities

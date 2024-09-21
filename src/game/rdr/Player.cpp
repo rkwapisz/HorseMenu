@@ -6,7 +6,9 @@
 #include "game/rdr/ScriptGlobal.hpp"
 #include "game/rdr/Natives.hpp"
 
+#include <network/CFriend.hpp>
 #include <network/CNetGamePlayer.hpp>
+#include <network/CNetworkPlayerMgr.hpp>
 #include <network/netPeerAddress.hpp>
 #include <network/rlScPeerConnection.hpp>
 #include <network/CNetworkScSession.hpp>
@@ -20,7 +22,7 @@ namespace YimMenu
 		m_Handle = Pointers.GetNetPlayerFromPid(id);
 	}
 
-	bool Player::IsValid()
+	bool Player::IsValid() const
 	{
 		return m_Handle && m_Handle->IsValid() && m_Handle->m_PlayerInfo;
 	}
@@ -72,6 +74,23 @@ namespace YimMenu
 	bool Player::IsHost()
 	{
 		return m_Handle->IsHost();
+	}
+
+	bool Player::IsFriend()
+	{
+		if (!IsValid())
+			return false;
+
+		for (int i = 0; i < 250; i++)
+		{
+			if (!Pointers.FriendRegistry[i])
+				break;
+
+			if (Pointers.FriendRegistry[i]->m_RockstarId == GetRID())
+				return true;
+		}
+
+		return false;
 	}
 
 	uint32_t Player::GetMessageId()
@@ -135,10 +154,10 @@ namespace YimMenu
 		return {};
 	}
 
-	uint32_t Player::GetRelayState()
+	uint32_t Player::GetConnectionType()
 	{
-		if (auto addr = GetConnectPeerAddress())
-			return addr->m_RelayState;
+		if (auto addr = Pointers.GetPeerAddressByMessageId(Pointers.NetworkPlayerMgr->m_NetConnectionManager, GetMessageId()))
+			return addr->m_connection_type;
 
 		return {};
 	}
@@ -227,6 +246,14 @@ namespace YimMenu
 		return &peer->m_SessionPeer->m_Connection->m_PeerAddress;
 	}
 
+	rage::netPeerAddress* Player::GetAddress()
+	{
+		if (auto addr = Pointers.GetPeerAddressByMessageId(Pointers.NetworkPlayerMgr->m_NetConnectionManager, GetMessageId()))
+			return addr;
+
+		return nullptr;
+	}
+
 	PlayerData& Player::GetData()
 	{
 		return Players::GetPlayerData(GetId());
@@ -243,7 +270,6 @@ namespace YimMenu
 		{
 			GetData().m_Detections.insert(det);
 			g_PlayerDatabase->AddDetection(g_PlayerDatabase->GetOrCreatePlayer(GetRID(), GetName()), det);
-
 		}
 	}
 
